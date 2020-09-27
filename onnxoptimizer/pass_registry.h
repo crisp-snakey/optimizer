@@ -8,6 +8,7 @@
 #include "onnx/common/stl_backports.h"
 #include "onnx/proto_utils.h"
 
+#include "onnxoptimizer/passes/eliminate_common_subexpression.h"
 #include "onnxoptimizer/passes/eliminate_deadend.h"
 #include "onnxoptimizer/passes/eliminate_identity.h"
 #include "onnxoptimizer/passes/eliminate_nop_dropout.h"
@@ -43,6 +44,7 @@ struct GlobalPassRegistry {
   GlobalPassRegistry() {
     // Register the optimization passes to the optimizer.
     registerPass<NopEmptyPass>();
+    registerPass<EliminateCommonSubexpression>();
     registerPass<EliminateDeadEnd>();
     registerPass<EliminateNopDropout>();
     registerPass<EliminateIdentity>();

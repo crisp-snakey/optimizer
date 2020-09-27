@@ -101,6 +101,21 @@ class TestOptimizer(unittest.TestCase):
         for pass_name in list_of_passes:
             # If pass_name is invalid it throws a RuntimeError
             self._optimized(graph, [pass_name])
+    
+    def test_eliminate_common_subexpression(self):
+        nodes = [helper.make_node("Add", ["X", "Y"], ["A"]),
+                 helper.make_node("Add", ["X", "Y"], ["B"])]
+        graph = helper.make_graph(
+            nodes,
+            "test",
+            [helper.make_tensor_value_info("X", TensorProto.FLOAT, (5,)),
+             helper.make_tensor_value_info("Y", TensorProto.FLOAT, (5,))]
+            [helper.make_tensor_value_info("A", TensorProto.FLOAT, (5,)),
+             helper.make_tensor_value_info("B", TensorProto.FLOAT, (5,))])
+
+        optimized_model = self._optimized(graph, ["eliminate_common_subexpression"])
+
+        assert len(optimzed_model.graph.node) == 1
 
     def test_eliminate_identity_single_use(self):  # type: () -> None
         nodes = [helper.make_node("Identity", ["X"], ["Y"])]
