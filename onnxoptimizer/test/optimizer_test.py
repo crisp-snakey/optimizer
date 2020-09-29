@@ -109,13 +109,13 @@ class TestOptimizer(unittest.TestCase):
             nodes,
             "test",
             [helper.make_tensor_value_info("X", TensorProto.FLOAT, (5,)),
-             helper.make_tensor_value_info("Y", TensorProto.FLOAT, (5,))]
+             helper.make_tensor_value_info("Y", TensorProto.FLOAT, (5,))],
             [helper.make_tensor_value_info("A", TensorProto.FLOAT, (5,)),
              helper.make_tensor_value_info("B", TensorProto.FLOAT, (5,))])
 
         optimized_model = self._optimized(graph, ["eliminate_common_subexpression"])
 
-        assert len(optimzed_model.graph.node) == 1
+        assert len(optimized_model.graph.node) == 1
 
     def test_eliminate_identity_single_use(self):  # type: () -> None
         nodes = [helper.make_node("Identity", ["X"], ["Y"])]

@@ -18,7 +18,7 @@ struct EliminateCommonSubexpression final : public PredicateBasedPass {
   std::string getPassName() const override {
     return "eliminate_common_subexpression";
   }
-
+ 
   bool patternMatchPredicate(Node* node) override {
     // We only check if all the input values are used more than once.
     if (node->inputs().size() == 0) {
@@ -33,9 +33,27 @@ struct EliminateCommonSubexpression final : public PredicateBasedPass {
     return true;
   }
 
+  bool are_equal_inputs(ArrayRef<Value*> source, ArrayRef<Value*> target) {
+    if (source.size() != target.size()) {
+      return false;
+    }
+
+    return std::equal(source.begin(), source.end(), target.begin());
+  }
+
   bool runTransform(Node* node, Graph&, NodeDestroyType& destroy_current)
       override {
-    auto node_type = node->kind();
+    auto node_kind = node->kind();
+
+    auto inputs = node->inputs();
+
+    for (auto use : inputs[0]->uses()) {
+      if (use.user->kind() == node_kind && use.user != node) {
+        if (!are_equal_inputs(inputs, use.user->inputs())) {
+          continue;
+        }
+      }
+    }
     return false;
   }
 };
