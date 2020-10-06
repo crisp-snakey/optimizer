@@ -33,6 +33,69 @@ struct EliminateCommonSubexpression final : public PredicateBasedPass {
     return true;
   }
 
+  bool have_equal_attributes(Node* source, Node* target) {
+    if (!source->hasAttributes() && !target->hasAttributes()) {
+      return true;
+    }
+    else if (source->hasAttributes() != target->hasAttributes()) {
+      return false;
+    }
+    else if (source->attributeNames().size() != target->attributeNames().size()) {
+      return false;
+    }
+    else {
+      auto attributeNames = source->attributeNames();
+
+      for (auto name : attributeNames) {
+        if (!target->hasAttribute(name)) {
+          return false;
+        }
+        else if (source->kindOf(name) != target->kindOf(name)) {
+          return false;
+        }
+        else {
+          switch (source->kindOf(name)) {
+            case AttributeKind::f:
+              if (source->f(name) != target->f(name)) {
+                return false;
+              }
+              break;
+            case AttributeKind::fs:
+              if (source->fs(name) != target->fs(name)) {
+                return false;
+              }
+              break;
+            case AttributeKind::i:
+              if (source->i(name) != target->i(name)) {
+                return false;
+              }
+              break;
+            case AttributeKind::is:
+              if (source->is(name) != target->is(name)) {
+                return false;
+              }
+              break;
+            case AttributeKind::s:
+              if (source->s(name) != target->s(name)) {
+                return false;
+              }
+              break;
+            case AttributeKind::ss:
+              if (source->ss(name) != target->ss(name)) {
+                return false;
+              }
+              break;
+            case AttributeKind::t:
+            case AttributeKind::ts:
+            case AttributeKind::g:
+            case AttributeKind::gs:
+              return false;
+          }
+        }
+      }
+    }
+  }
+
   bool are_equal_inputs(ArrayRef<Value*> source, ArrayRef<Value*> target) {
     if (source.size() != target.size()) {
       return false;
@@ -41,20 +104,48 @@ struct EliminateCommonSubexpression final : public PredicateBasedPass {
     return std::equal(source.begin(), source.end(), target.begin());
   }
 
-  bool runTransform(Node* node, Graph&, NodeDestroyType& destroy_current)
-      override {
-    auto node_kind = node->kind();
-
-    auto inputs = node->inputs();
-
-    for (auto use : inputs[0]->uses()) {
-      if (use.user->kind() == node_kind && use.user != node) {
-        if (!are_equal_inputs(inputs, use.user->inputs())) {
-          continue;
+  Node* find_candidate_node(Node* current, use_list uses) {
+    for (auto use : uses) {
+      if (use.user->kind() == current->kind() && use.user != current) {
+        if (are_equal_inputs(current->inputs(), use.user->inputs())) {
+          if (have_equal_attributes(current, use.user)) {
+            return use.user;
+          }
         }
       }
     }
-    return false;
+    return nullptr;
+  }
+
+  bool runTransform(Node* node, Graph& graph, NodeDestroyType& destroy_current)
+      override {
+    auto candidate = find_candidate_node(node, node->inputs()[0]->uses());
+
+    if (candidate) {
+      auto n_outputs = node->outputs();
+      auto c_outputs = candidate->outputs();
+
+      for (size_t i = 0; i < n_outputs.size(); i += 1) {
+        auto n_output = n_outputs[i];
+        auto c_output = c_outputs[i];
+
+        if (n_output->has_sizes()) {
+          c_output->setSizes(n_output->sizes());
+        }
+
+        if (std::find(graph.outputs().rbegin(), graph.outputs().rend(),
+                  n_output) != graph.outputs().rend()) {
+          c_output->setUniqueName(n_output->uniqueName());
+        }
+
+        n_output->replaceAllUsesWith(c_output);
+      }
+      destroy_current = NodeDestroyType::DestroyOne;
+      return true;
+    }
+    else {
+      return false;
+    }
   }
 };
 
